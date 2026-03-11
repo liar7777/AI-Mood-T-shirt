@@ -203,20 +203,6 @@ const InspirationFlow: React.FC<Props> = ({ onSelect }) => {
                   </ul>
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-zinc-500 font-mono">Prompt 实验室</p>
-                    <button
-                      onClick={() => handleCopy(selected.promptJson || '')}
-                      className="text-xs text-[#0057FF]"
-                    >
-                      {copied ? '已复制' : '一键复制 JSON'}
-                    </button>
-                  </div>
-                  <pre className="mt-2 bg-zinc-50 border border-black/10 rounded-lg p-3 text-[10px] text-zinc-700 whitespace-pre-wrap">
-{selected.promptJson || '暂无 Prompt'}
-                  </pre>
-                </div>
 
                 <button
                   onClick={() => {
