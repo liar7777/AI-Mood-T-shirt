@@ -10,7 +10,7 @@ interface ChatInterfaceProps {
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ onComplete, initialPrompt }) => {
   const [messages, setMessages] = useState<any[]>([
-    { id: '1', role: 'agent', text: 'Hey, 捕捉到你现在的波段了吗？告诉我你今天想穿什么情绪。' }
+    { id: '1', role: 'agent', text: '已经捕捉到你现在的波段了吗？告诉我你今天想穿什么情绪。' }
   ]);
   const [input, setInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -48,14 +48,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onComplete, initialPrompt
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'agent',
-        text: '情绪提取完毕。这是 4 款灵感草图，选一张进行深化：',
+        text: '情绪提取完毕。这是 1 张灵感草图，直接进入深化：',
         images: images
       }]);
     } catch (error) {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'agent',
-        text: 'Ops... 情绪波段太强，我的引擎卡住了。再试一次？'
+        text: '哎呀，情绪波段过强，我的引擎卡住了。要再试一次吗？'
       }]);
     } finally {
       setIsGenerating(false);
@@ -63,7 +63,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onComplete, initialPrompt
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] relative bg-[#050505]">
+    <div className="flex flex-col h-[calc(100vh-64px)] relative bg-[#F8F9FA]">
       <div 
         ref={scrollRef}
         className="flex-1 overflow-y-auto p-4 space-y-6 pb-48"
@@ -76,8 +76,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onComplete, initialPrompt
             <div className={`max-w-[90%] space-y-3`}>
               <div className={`px-4 py-3 rounded-2xl ${
                 msg.role === 'user' 
-                  ? 'bg-[#A020F0] text-white rounded-tr-none' 
-                  : 'bg-zinc-900 border border-white/10 rounded-tl-none'
+                  ? 'bg-[#0057FF] text-white rounded-tr-none' 
+                  : 'bg-white border border-black/10 rounded-tl-none'
               }`}>
                 <p className="text-sm leading-relaxed">{msg.text}</p>
               </div>
@@ -87,12 +87,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onComplete, initialPrompt
                   {msg.images.map((img: string, idx: number) => (
                     <div 
                       key={idx} 
-                      className="group relative rounded-xl overflow-hidden border border-white/10 hover:border-[#CCFF00] transition-all cursor-pointer"
+                      className="group relative rounded-xl overflow-hidden border border-black/10 hover:border-[#0057FF] transition-all cursor-pointer"
                       onClick={() => onComplete(img)}
                     >
-                      <img src={img} alt={`Sketch ${idx}`} className="w-full aspect-square object-cover" />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                        <span className="bg-[#CCFF00] text-black text-[10px] font-bold px-2 py-1 rounded">SELECT</span>
+                      <img src={img} alt={`草图 ${idx}`} className="w-full aspect-square object-cover" />
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <span className="bg-white text-black text-[10px] font-bold px-2 py-1 rounded">选用</span>
                       </div>
                     </div>
                   ))}
@@ -103,17 +103,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onComplete, initialPrompt
         ))}
         {isGenerating && (
           <div className="flex justify-start">
-            <div className="bg-zinc-900 px-4 py-3 rounded-2xl rounded-tl-none border border-white/10">
+            <div className="bg-white px-4 py-3 rounded-2xl rounded-tl-none border border-black/10">
               <div className="flex flex-col gap-3">
                 <div className="flex gap-1.5 items-center">
-                  <div className="w-1.5 h-1.5 bg-[#CCFF00] rounded-full animate-bounce" />
-                  <div className="w-1.5 h-1.5 bg-[#CCFF00] rounded-full animate-bounce [animation-delay:0.2s]" />
-                  <div className="w-1.5 h-1.5 bg-[#CCFF00] rounded-full animate-bounce [animation-delay:0.4s]" />
-                  <span className="text-[10px] font-mono ml-2 text-zinc-500 uppercase tracking-widest">Generating 4 Sketches...</span>
+                  <div className="w-1.5 h-1.5 bg-[#0057FF] rounded-full animate-bounce" />
+                  <div className="w-1.5 h-1.5 bg-[#0057FF] rounded-full animate-bounce [animation-delay:0.2s]" />
+                  <div className="w-1.5 h-1.5 bg-[#0057FF] rounded-full animate-bounce [animation-delay:0.4s]" />
+                  <span className="text-[10px] font-mono ml-2 text-zinc-500 tracking-widest">正在生成 1 张草图…</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  {[1,2,3,4].map(i => (
-                    <div key={i} className="aspect-square bg-zinc-800 animate-pulse rounded-lg" />
+                  {[1].map(i => (
+                    <div key={i} className="aspect-square bg-zinc-100 animate-pulse rounded-lg" />
                   ))}
                 </div>
               </div>
@@ -122,14 +122,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onComplete, initialPrompt
         )}
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-4 space-y-4 glass border-t border-white/10">
+      <div className="absolute bottom-0 left-0 right-0 p-4 space-y-4 glass border-t border-black/10">
+        <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 px-1">
+          <span>状态：在线</span>
+          <span>预计耗时：1–2 分钟</span>
+        </div>
         {!isGenerating && (
           <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
             {STYLE_CARDS.map((style) => (
               <button
                 key={style.label}
                 onClick={() => handleSend('', style.value)}
-                className="whitespace-nowrap px-4 py-2 rounded-full glass border border-white/20 text-xs font-bold hover:border-[#CCFF00] hover:text-[#CCFF00] transition-all active:scale-95"
+                className="whitespace-nowrap px-4 py-2 rounded-full glass border border-black/10 text-xs font-bold hover:border-[#0057FF] hover:text-[#0057FF] transition-all active:scale-95"
               >
                 [{style.label}]
               </button>
@@ -142,13 +146,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onComplete, initialPrompt
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="输入你此刻的情绪描述..."
-            className="w-full bg-zinc-900/50 border border-white/10 rounded-full px-6 py-4 pr-16 text-sm focus:outline-none focus:border-[#CCFF00]/50 transition-all"
+            placeholder="输入你此刻的情绪描述…"
+            className="w-full bg-white border border-black/10 rounded-full px-6 py-4 pr-16 text-sm focus:outline-none focus:border-[#0057FF]/60 transition-all"
             onKeyDown={(e) => e.key === 'Enter' && handleSend(input)}
           />
           <button 
             onClick={() => handleSend(input)}
-            className="absolute right-2 top-2 bottom-2 w-12 bg-[#CCFF00] text-black rounded-full flex items-center justify-center hover:scale-95 active:scale-90 transition-transform shadow-[0_0_10px_rgba(204,255,0,0.3)]"
+            className="absolute right-2 top-2 bottom-2 w-12 bg-[#0057FF] text-white rounded-full flex items-center justify-center hover:scale-95 active:scale-90 transition-transform shadow-[0_0_10px_rgba(0,87,255,0.3)]"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
           </button>

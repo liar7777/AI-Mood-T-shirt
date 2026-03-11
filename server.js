@@ -1,4 +1,16 @@
 
+require('dotenv').config();
+// Optional: route all outbound fetch (used by @google/genai) via proxy if set
+try {
+  const { setGlobalDispatcher, ProxyAgent } = require('undici');
+  const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.ALL_PROXY;
+  if (proxyUrl) {
+    setGlobalDispatcher(new ProxyAgent(proxyUrl));
+    console.log(`Proxy enabled for outbound requests: ${proxyUrl}`);
+  }
+} catch (e) {
+  console.warn(`Proxy setup skipped: ${e.message}`);
+}
 const express = require('express');
 const path = require('path');
 const { GoogleGenAI } = require("@google/genai");
@@ -16,29 +28,23 @@ app.use(express.static(distPath));
  * Using gemini-3-pro-image-preview for high-quality streetwear design tasks.
  */
 
-// 1. Generate 4 design sketches
+// 1. Generate 1 design sketch
 app.post('/api/sketches', async (req, res) => {
   try {
     const { prompt, vibe } = req.body;
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const finalPrompt = `Create a streetwear graphic design. Style: ${vibe}. Theme: ${prompt}. High quality, clean graphic design on a solid background, suitable for silk screen printing. Unique variation.`;
 
-    // Generate 4 variations in parallel
-    const tasks = Array.from({ length: 4 }).map(() => 
-      ai.models.generateContent({
-        model: 'gemini-3-pro-image-preview',
-        contents: { parts: [{ text: finalPrompt }] },
-        config: {
-          imageConfig: { aspectRatio: "1:1", imageSize: "1K" }
-        }
-      })
-    );
+    const result = await ai.models.generateContent({
+      model: 'gemini-3-pro-image-preview',
+      contents: { parts: [{ text: finalPrompt }] },
+      config: {
+        imageConfig: { aspectRatio: "1:1", imageSize: "1K" }
+      }
+    });
 
-    const results = await Promise.all(tasks);
-    const images = results
-      .map(r => r.candidates?.[0]?.content?.parts.find(p => p.inlineData))
-      .filter(p => !!p)
-      .map(p => `data:image/png;base64,${p.inlineData.data}`);
+    const part = result.candidates?.[0]?.content?.parts.find(p => p.inlineData);
+    const images = part ? [`data:image/png;base64,${part.inlineData.data}`] : [];
 
     res.json({ images });
   } catch (error) {
@@ -50,18 +56,18 @@ app.post('/api/sketches', async (req, res) => {
 // 2. Generate model mockup
 app.post('/api/mockup', async (req, res) => {
   try {
-    const { designBase64, garmentType } = req.body;
+  const { designBase64, garmentType } = req.body;
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const base64Data = designBase64.split(',')[1];
     
-    const garmentMap = {
-      '圆领T': 'high-quality round neck T-shirt',
-      '卫ie': 'streetwear hoodie',
-      '冲锋衣': 'technical windbreaker shell jacket'
+    const positionMap = {
+      '前': 'front chest',
+      '后': 'back',
+      '侧': 'left sleeve',
     };
 
-    const description = garmentMap[garmentType] || garmentType;
-    const prompt = `An East Asian medium-build male model wearing a ${description} with the provided graphic design printed clearly on the chest. Clean white studio background, professional fashion photography, high-end streetwear aesthetic, realistic fabric textures. The model is standing in a neutral, cool pose.`;
+    const position = positionMap[garmentType] || 'front chest';
+    const prompt = `An East Asian medium-build male model wearing a high-quality white T-shirt with the provided graphic design printed clearly on the ${position}. Clean white studio background, professional fashion photography, high-end streetwear aesthetic, realistic fabric textures. The model is standing in a neutral, cool pose.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-image-preview',

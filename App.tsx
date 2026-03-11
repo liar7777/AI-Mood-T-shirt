@@ -39,6 +39,7 @@ const App: React.FC = () => {
         <MockupLab 
           designUrl={designUrl} 
           onNext={() => setView('CHECKOUT')} 
+          onBack={() => setView('CHAT')}
         />
       )}
 
