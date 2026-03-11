@@ -61,7 +61,7 @@ const MockupLab: React.FC<Props> = ({ designUrl, onNext, onBack }) => {
 
   const [stage, setStage] = useState<StageSize>({ w: 0, h: 0 });
   const [designPos, setDesignPos] = useState<DesignPos>({ x: 0.5, y: 0.45 });
-  const [designScale, setDesignScale] = useState(1);
+  const [designScale, setDesignScale] = useState(0.75);
   const [designRotate, setDesignRotate] = useState(0);
 
   const stageRef = useRef<HTMLDivElement>(null);
@@ -153,6 +153,10 @@ const MockupLab: React.FC<Props> = ({ designUrl, onNext, onBack }) => {
 
   const startDrag = (mode: DragMode, e: React.PointerEvent) => {
     if (!stage.w || !stage.h) return;
+    if (e.pointerType === 'touch') {
+      e.preventDefault();
+    }
+    e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     dragRef.current = {
       mode,
@@ -167,6 +171,9 @@ const MockupLab: React.FC<Props> = ({ designUrl, onNext, onBack }) => {
   const onDrag = (e: React.PointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current;
     if (!drag || !stage.w || !stage.h) return;
+    if (e.pointerType === 'touch') {
+      e.preventDefault();
+    }
 
     const dx = e.clientX - drag.startX;
     const dy = e.clientY - drag.startY;
@@ -201,6 +208,9 @@ const MockupLab: React.FC<Props> = ({ designUrl, onNext, onBack }) => {
     const drag = dragRef.current;
     if (!drag) return;
     dragRef.current = null;
+    if (e.pointerType === 'touch') {
+      e.preventDefault();
+    }
     try {
       (e.target as HTMLDivElement).releasePointerCapture(e.pointerId);
     } catch {
@@ -238,7 +248,7 @@ const MockupLab: React.FC<Props> = ({ designUrl, onNext, onBack }) => {
 
   const handleReset = () => {
     setDesignPos(CHEST_ANCHOR_DEFAULT[positionType]);
-    setDesignScale(1);
+    setDesignScale(0.75);
     setDesignRotate(0);
   };
 
@@ -258,7 +268,7 @@ const MockupLab: React.FC<Props> = ({ designUrl, onNext, onBack }) => {
             {viewMode === '2D' && (
               <div
                 ref={stageRef}
-                className="absolute inset-0"
+                className="absolute inset-0 touch-none"
                 onPointerMove={onDrag}
                 onPointerUp={endDrag}
                 onPointerLeave={endDrag}
@@ -294,7 +304,7 @@ const MockupLab: React.FC<Props> = ({ designUrl, onNext, onBack }) => {
                       src={currentDesign}
                       alt="图案预览"
                       onPointerDown={(e) => startDrag('move', e)}
-                      className="absolute inset-0 w-full h-full cursor-move select-none mix-blend-multiply"
+                      className="absolute inset-0 w-full h-full cursor-move select-none mix-blend-multiply touch-none"
                       draggable={false}
                     />
 
@@ -302,7 +312,7 @@ const MockupLab: React.FC<Props> = ({ designUrl, onNext, onBack }) => {
                       <button
                         type="button"
                         onPointerDown={(e) => startDrag('rotate', e)}
-                        className="w-6 h-6 rounded-full border border-[#0057FF] bg-white text-[10px] font-mono text-[#0057FF] shadow-sm cursor-grab"
+                        className="w-6 h-6 rounded-full border border-[#0057FF] bg-white text-[10px] font-mono text-[#0057FF] shadow-sm cursor-grab touch-none"
                       >
                         旋
                       </button>
@@ -312,7 +322,7 @@ const MockupLab: React.FC<Props> = ({ designUrl, onNext, onBack }) => {
                       <button
                         type="button"
                         onPointerDown={(e) => startDrag('scale', e)}
-                        className="w-6 h-6 rounded-full border border-[#0057FF] bg-white text-[10px] font-mono text-[#0057FF] shadow-sm cursor-nwse-resize"
+                        className="w-6 h-6 rounded-full border border-[#0057FF] bg-white text-[10px] font-mono text-[#0057FF] shadow-sm cursor-nwse-resize touch-none"
                       >
                         拉
                       </button>
