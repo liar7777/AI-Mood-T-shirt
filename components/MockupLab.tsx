@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Check, Loader2, Maximize2, Move, RotateCw, Wand2 } from 'lucide-react';
+import { Check, Loader2, Maximize2, Move, RotateCw, Wand2 } from 'lucide-react';
 import { REFINEMENT_TAGS } from '../constants';
 import { gemini } from '../geminiService';
 
 interface Props {
   designUrl: string;
-  onNext: () => void;
+  isLoading?: boolean;
+  loadingText?: string;
+  onNext: (previews: Record<string, string>) => void;
   onBack?: () => void;
 }
 
@@ -44,6 +46,12 @@ const SAFE_BOX_RATIO: Record<PositionType, { left: number; top: number; width: n
   '侧': { left: 0.4208, top: 0.3534, width: 0.2684, height: 0.2721 },
 };
 
+const DEFAULT_SCALE: Record<PositionType, number> = {
+  '前': 0.75,
+  '后': 0.75,
+  '侧': 0.375,
+};
+
 const POSITION_IMAGES: Record<PositionType, string> = {
   '前': '/mockups/front.jpg',
   '后': '/mockups/back.jpg',
@@ -52,17 +60,38 @@ const POSITION_IMAGES: Record<PositionType, string> = {
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-const MockupLab: React.FC<Props> = ({ designUrl, onNext, onBack }) => {
+const MockupLab: React.FC<Props> = ({ designUrl, isLoading = false, loadingText = '加载中', onNext, onBack }) => {
   const [currentDesign, setCurrentDesign] = useState(designUrl);
   const [mockupImage, setMockupImage] = useState<string | null>(null);
   const [positionType, setPositionType] = useState<PositionType>('前');
   const [isUpdating, setIsUpdating] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('2D');
+  const [refineInput, setRefineInput] = useState('');
 
   const [stage, setStage] = useState<StageSize>({ w: 0, h: 0 });
   const [designPos, setDesignPos] = useState<DesignPos>({ x: 0.5, y: 0.45 });
-  const [designScale, setDesignScale] = useState(0.75);
+  const [designScale, setDesignScale] = useState(DEFAULT_SCALE['前']);
   const [designRotate, setDesignRotate] = useState(0);
+  const [designPosMap, setDesignPosMap] = useState<Record<PositionType, DesignPos>>({
+    '前': { x: 0.5, y: 0.38 },
+    '后': { x: 0.5, y: 0.36 },
+    '侧': { x: 0.55, y: 0.4 },
+  });
+  const [designScaleMap, setDesignScaleMap] = useState<Record<PositionType, number>>({
+    '前': DEFAULT_SCALE['前'],
+    '后': DEFAULT_SCALE['后'],
+    '侧': DEFAULT_SCALE['侧'],
+  });
+  const [designRotateMap, setDesignRotateMap] = useState<Record<PositionType, number>>({
+    '前': 0,
+    '后': 0,
+    '侧': 0,
+  });
+  const [touchedPositions, setTouchedPositions] = useState<Record<PositionType, boolean>>({
+    '前': true,
+    '后': false,
+    '侧': false,
+  });
 
   const stageRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -90,9 +119,10 @@ const MockupLab: React.FC<Props> = ({ designUrl, onNext, onBack }) => {
   }, []);
 
   useEffect(() => {
-    const anchor = CHEST_ANCHOR_DEFAULT[positionType];
-    setDesignPos(anchor);
-  }, [positionType]);
+    setDesignPos(designPosMap[positionType]);
+    setDesignScale(designScaleMap[positionType]);
+    setDesignRotate(designRotateMap[positionType]);
+  }, [positionType, designPosMap, designScaleMap, designRotateMap]);
 
   const baseSize = useMemo(() => {
     if (!stage.w || !stage.h) return 0;
@@ -231,14 +261,19 @@ const MockupLab: React.FC<Props> = ({ designUrl, onNext, onBack }) => {
   };
 
   const handleRefine = async (instruction: string) => {
+    if (!currentDesign) {
+      onNext({ front: '', back: '', side: '' });
+      return;
+    }
     setIsUpdating(true);
     try {
-      const result = await gemini.editDesign(currentDesign, instruction);
+      const prompt = `仅调整印花图案本身，不修改T恤、背景、光影或任何服装细节。调整要求：${instruction}`;
+      const result = await gemini.editDesign(currentDesign, prompt);
       setCurrentDesign(result);
     } catch (e) {
       alert('微调失败，请再试一次。');
-      setIsUpdating(false);
     }
+    setIsUpdating(false);
   };
 
   const handleGenerate3D = async () => {
@@ -248,21 +283,81 @@ const MockupLab: React.FC<Props> = ({ designUrl, onNext, onBack }) => {
 
   const handleReset = () => {
     setDesignPos(CHEST_ANCHOR_DEFAULT[positionType]);
-    setDesignScale(0.75);
+    setDesignScale(DEFAULT_SCALE[positionType]);
     setDesignRotate(0);
+    setDesignPosMap((prev) => ({ ...prev, [positionType]: CHEST_ANCHOR_DEFAULT[positionType] }));
+    setDesignScaleMap((prev) => ({ ...prev, [positionType]: DEFAULT_SCALE[positionType] }));
+    setDesignRotateMap((prev) => ({ ...prev, [positionType]: 0 }));
+  };
+
+  const persistCurrentTransform = () => {
+    setDesignPosMap((prev) => ({ ...prev, [positionType]: designPos }));
+    setDesignScaleMap((prev) => ({ ...prev, [positionType]: designScale }));
+    setDesignRotateMap((prev) => ({ ...prev, [positionType]: designRotate }));
+  };
+
+  const renderComposite = async (pos: PositionType, designSrc: string) => {
+    const baseSrc = POSITION_IMAGES[pos];
+    const loadImage = (src: string) =>
+      new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+
+    const [baseImg, designImg] = await Promise.all([loadImage(baseSrc), loadImage(designSrc)]);
+    const canvas = document.createElement('canvas');
+    canvas.width = baseImg.naturalWidth || baseImg.width;
+    canvas.height = baseImg.naturalHeight || baseImg.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+
+    ctx.drawImage(baseImg, 0, 0, canvas.width, canvas.height);
+
+    const ratio = SAFE_BOX_RATIO[pos];
+    const baseSize = Math.min(canvas.width, canvas.height) * 0.46;
+    const size = baseSize * (designScaleMap[pos] ?? DEFAULT_SCALE[pos]);
+    const centerX = canvas.width * (designPosMap[pos]?.x ?? 0.5);
+    const centerY = canvas.height * (designPosMap[pos]?.y ?? 0.45);
+    const safeBox = {
+      left: canvas.width * ratio.left,
+      top: canvas.height * ratio.top,
+      w: canvas.width * ratio.width,
+      h: canvas.height * ratio.height,
+    };
+    const half = size / 2;
+    const clampedX = clamp(centerX, safeBox.left + half, safeBox.left + safeBox.w - half);
+    const clampedY = clamp(centerY, safeBox.top + half, safeBox.top + safeBox.h - half);
+
+    ctx.save();
+    ctx.translate(clampedX, clampedY);
+    ctx.rotate(((designRotateMap[pos] ?? 0) * Math.PI) / 180);
+    ctx.drawImage(designImg, -size / 2, -size / 2, size, size);
+    ctx.restore();
+
+    return canvas.toDataURL('image/png');
+  };
+
+  const handleProceed = async () => {
+    if (!currentDesign) return;
+    persistCurrentTransform();
+    const results: Record<string, string> = { front: '', back: '', side: '' };
+    results.front = await renderComposite('前', currentDesign);
+    if (touchedPositions['后']) {
+      results.back = await renderComposite('后', currentDesign);
+    }
+    if (touchedPositions['侧']) {
+      results.side = await renderComposite('侧', currentDesign);
+    }
+    onNext(results);
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8F9FA]">
       <main className="flex-1 flex flex-col w-full mx-auto">
         <div className="flex-1 p-4 flex flex-col items-center justify-center relative">
-          <button
-            onClick={onBack}
-            className="absolute top-4 left-4 p-2 rounded-full border border-black/10 hover:bg-black hover:text-white transition-colors"
-            type="button"
-          >
-            <ArrowLeft size={20} />
-          </button>
 
           <div className="w-full aspect-[3/4] relative bg-white rounded-2xl border border-black/10 overflow-hidden shadow-sm">
             {viewMode === '2D' && (
@@ -358,13 +453,26 @@ const MockupLab: React.FC<Props> = ({ designUrl, onNext, onBack }) => {
                 )}
               </div>
             )}
+
+            {isLoading && (
+              <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
+                <div className="flex flex-col items-center gap-3 text-[#0057FF]">
+                  <Loader2 className="animate-spin" size={28} />
+                  <span className="text-sm font-mono tracking-widest">{loadingText}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="mt-6 flex gap-4">
             {(['前', '后', '侧'] as const).map((pos) => (
               <button
                 key={pos}
-                onClick={() => setPositionType(pos)}
+                onClick={() => {
+                  persistCurrentTransform();
+                  setTouchedPositions((prev) => ({ ...prev, [pos]: true }));
+                  setPositionType(pos);
+                }}
                 className={`px-4 py-2 rounded-full border text-sm font-medium tracking-wider transition-colors ${
                   positionType === pos
                     ? 'bg-black text-white border-black'
@@ -381,6 +489,7 @@ const MockupLab: React.FC<Props> = ({ designUrl, onNext, onBack }) => {
           <div className="mb-8">
             <div className="inline-block px-2 py-1 bg-gray-100 rounded text-xs font-mono mb-2">当前风格</div>
             <h2 className="text-2xl font-bold">参数设置</h2>
+            <p className="text-xs text-gray-400 mt-1">高级功能（内测）</p>
             <p className="text-sm text-gray-500 mt-2">在不改变工艺约束的前提下微调图案效果。</p>
           </div>
 
@@ -394,11 +503,16 @@ const MockupLab: React.FC<Props> = ({ designUrl, onNext, onBack }) => {
                 <input
                   type="text"
                   placeholder="例如：颜色更明亮，字形更硬朗"
+                  value={refineInput}
+                  onChange={(e) => setRefineInput(e.target.value)}
                   className="flex-1 px-3 py-2 border border-black/10 rounded-lg text-sm focus:outline-none focus:border-[#0057FF]"
                 />
                 <button
-                  onClick={() => handleRefine(REFINEMENT_TAGS[0])}
-                  disabled={isUpdating}
+                  onClick={() => {
+                    if (!refineInput.trim()) return;
+                    handleRefine(refineInput.trim());
+                  }}
+                  disabled={isUpdating || !refineInput.trim()}
                   className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium disabled:opacity-50 flex items-center justify-center min-w-[80px]"
                 >
                   {isUpdating ? <Loader2 size={16} className="animate-spin" /> : '应用'}
@@ -480,10 +594,10 @@ const MockupLab: React.FC<Props> = ({ designUrl, onNext, onBack }) => {
           <div className="mt-auto pt-8 border-t border-black/10">
             <div className="flex items-center justify-between mb-4">
               <span className="text-gray-600">基础价格</span>
-              <span className="font-bold text-xl">¥199.00</span>
+              <span className="font-bold text-xl">¥78</span>
             </div>
             <button
-              onClick={onNext}
+              onClick={handleProceed}
               disabled={isUpdating}
               className="w-full py-4 bg-[#0057FF] text-white rounded-xl font-bold text-lg hover:bg-[#0046CC] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >

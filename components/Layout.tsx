@@ -23,13 +23,15 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange }) =
           <h1 className="text-xl font-bold tracking-tighter">情绪定制</h1>
         </div>
         
-        <button
-          onClick={() => onViewChange('CHAT')}
-          className="text-xs font-mono px-3 py-1.5 border border-black/10 rounded-full text-[#0057FF] hover:bg-[#0057FF]/5 transition-all flex items-center gap-2 group relative overflow-hidden"
-        >
-          <span className="relative z-10">高级用户定制（内测）</span>
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-        </button>
+        {activeView === 'LANDING' && (
+          <button
+            onClick={() => onViewChange('CHAT')}
+            className="text-xs font-mono px-3 py-1.5 border border-black/10 rounded-full text-[#0057FF] hover:bg-[#0057FF]/5 transition-all flex items-center gap-2 group relative overflow-hidden"
+          >
+            <span className="relative z-10">高级用户定制（内测）</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+          </button>
+        )}
       </header>
 
       <main className="flex-1 overflow-y-auto pb-24">

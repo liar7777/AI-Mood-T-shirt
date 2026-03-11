@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { INSPIRATION_CASES, InspirationCase } from '../data';
 
 interface Props {
-  onSelect: (prompt: string) => void;
+  onSelect: (imageUrl: string, id: string) => void;
 }
 
 const FILTERS = [
@@ -118,15 +118,6 @@ const InspirationFlow: React.FC<Props> = ({ onSelect }) => {
                   </span>
                 ))}
               </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelect(card.promptJson || card.style || '灵感设计');
-                }}
-                className="mt-3 w-full py-2 bg-white text-black text-xs font-bold rounded flex items-center justify-center gap-2 hover:bg-[#0057FF] hover:text-white transition-colors"
-              >
-                应用此配方
-              </button>
             </div>
             <div className="p-3 space-y-2">
               <div className="flex flex-wrap gap-1">
@@ -206,7 +197,7 @@ const InspirationFlow: React.FC<Props> = ({ onSelect }) => {
 
                 <button
                   onClick={() => {
-                    onSelect(selected.promptJson || selected.style || '灵感设计');
+                    onSelect(selected.imageUrl, selected.id);
                     setSelected(null);
                   }}
                   className="w-full py-3 bg-[#0057FF] text-white rounded-xl font-bold text-sm hover:bg-[#0046CC] transition-colors"
