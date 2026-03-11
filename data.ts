@@ -23,7 +23,7 @@ export const INSPIRATION_CASES: InspirationCase[] = [
     tags: ["日系", "可爱", "甜美", "简约"],
     sizes: ["正面占50%～60%，左肩袖子较小"],
     promptJson: "{\n  \"tshirt_design\": {\n    \"style_type\": \"日系简约可爱风\",\n    \"colors\": {\n      \"base_color\": \"米白色/纯白色\",\n      \"print_colors\": [\n        \"深蓝色/藏青色\",\n        \"橙色/橘红色\"\n      ]\n    },\n    \"pattern_positions\": {\n      \"front\": {\n        \"location\": \"正中央（胸部至腹部上方区域）\",\n        \"description\": \"完整的“今亦甜”卡通形象Logo\",\n        \"size_ratio\": \"占正面视觉面积的50%-60%\"\n      },\n      \"sleeve\": {\n        \"location\": \"左肩袖子区域\",\n        \"description\": \"缩小版的Logo作为辅助装饰\",\n        \"size_ratio\": \"约为主图案的1/4到1/5\"\n      }\n    }\n  }\n}",
-    imageUrl: "/images/case-13.png",
+    imageUrl: "/images/case-13.jpg",
   },
   {
     id: 'case-10',
@@ -38,7 +38,7 @@ export const INSPIRATION_CASES: InspirationCase[] = [
     tags: ["团队", "可靠", "有准备"],
     sizes: ["仅正面左胸口处5～8cm"],
     promptJson: "\"tshirt_design\": {\n     \"style_type\": \"专业干练风格（比赛用）\",\n     \"colors\": {\n       \"base_color\": \"纯白色\",\n       \"print_colors\": [\"绿色\", \"白色\", \"黄色\", \"红色\", \"蓝色\"]\n     },\n     \"pattern_positions\": {\n       \"front\": {\n         \"location\": \"左胸口位置（距离领口下方约15cm处）\",\n         \"description\": \"完整的梨花主题LOGO（包含绿色叶片、白色花瓣、黄色花蕊、红蓝飘带元素）\",\n         \"size\": \"直径约5~8cm\"\n       }\n     },\n     \"tags\": [\"团队\", \"可靠\", \"有准备\", \"专业\", \"干练\"]\n   }\n }",
-    imageUrl: "/images/case-10.png",
+    imageUrl: "/images/case-10.jpg",
   },
   {
     id: 'case-11',
@@ -53,7 +53,7 @@ export const INSPIRATION_CASES: InspirationCase[] = [
     tags: ["休闲", "活力", "有记忆点"],
     sizes: [],
     promptJson: "{\n  \"tshirt_design\": {\n    \"style_type\": \"休闲简约风格（期末提案用）\",\n    \"colors\": {\n      \"base_color\": \"纯白色\",\n      \"print_colors\": [\"薄荷绿/浅荧光绿\"]\n    },\n    \"pattern_positions\": {\n      \"front\": {\n        \"location\": \"左胸口位置（距离领口下方约15cm处）\",\n        \"description\": \"完整的卡通小羊LOGO（线条轮廓为薄荷绿/浅荧光绿，内部为镂空设计，呈现慵懒闭眼的可爱神态）\",\n        \"size\": \"直径约5~8cm\"\n      }\n    },\n    \"tags\": [\"休闲\", \"活力\", \"有记忆点\", \"简约\", \"可爱\"]\n  }\n}",
-    imageUrl: "/images/case-11.png",
+    imageUrl: "/images/case-11.jpg",
   },
  {
     id: 'case-12',
@@ -83,7 +83,7 @@ export const INSPIRATION_CASES: InspirationCase[] = [
     tags: ["应援", "潮流", "个性", "社群文化"],
     sizes: ["胸前主图：25–30cm"],
     promptJson: "{\n  \"kpop_fan_tshirt_design\": {\n    \"style_type\": \"追星应援风\",\n    \"garment_type\": \"圆领短袖T恤\",\n    \"colors\": {\n      \"base_color\": \"纯白色\",\n      \"accent_colors\": [\n        \"黑色\",\n        \"亮黄色\",\n        \"紫色\",\n        \"红色\",\n        \"绿色\",\n        \"青色\",\n        \"蓝色\",\n        \"粉色\"\n      ],\n      \"auxiliary_color\": \"浅米色\"\n    },\n    \"pattern_positions\": {\n      \"front\": {\n        \"location\": \"胸前中心区域（覆盖领口下方至腹部上方）\",\n        \"content\": \"左侧为加粗黑色字母“I”，右侧为心形镂空框内嵌Jennie闭眼睡颜照片；下方为加粗圆润黑色字体“jennie”，字母“n”上叠加浅米色卡通小狗形象，右侧搭配白色天使翅膀装饰；整体点缀多彩五角星（黄/紫/红/绿/青/蓝/粉）与星光元素\",\n        \"size\": \"整体图案高度约28-32cm，宽度约22-26cm，占比胸前面积约60%\"\n      }\n    },\n    \"fabric_suggestion\": \"精梳棉平纹面料，宽松舒适版型，适合粉丝应援或日常穿搭\"\n  }\n}",
-    imageUrl: "/images/case-04.png",
+    imageUrl: "/images/case-04.jpg",
   },
   {
     id: 'case-02',
@@ -98,7 +98,7 @@ export const INSPIRATION_CASES: InspirationCase[] = [
     tags: ["简约文字（院训院徽）", "干净", "大气"],
     sizes: ["左胸前："],
     promptJson: "{\n  \"polo_tshirt_design\": {\n    \"style_type\": \"新中式商务休闲风\",\n    \"colors\": {\n      \"base_color\": \"湖蓝色/天蓝色\",\n      \"print_colors\": [\n        \"白色\"\n      ],\n      \"auxiliary_color\": \"白色（用于领口、袖口条纹装饰）\"\n    },\n    \"pattern_positions\": {\n      \"front\": {\n        \"location\": \"左胸位置（距离领口下方约12cm处）\",\n        \"content\": \"白色几何线条构成的“M”形品牌标识，两侧竖排文字“自信自强 自律至善”，下方搭配小号英文/拼音辅助文字\",\n        \"size\": \"整体图案高度约8-10cm，宽度约6-8cm\"\n      },\n      \"back\": {\n        \"location\": \"背部中心区域（覆盖肩胛骨下方至腰部以上）\",\n        \"content\": \"白色竖排书法字体，左侧为“自信自强”，右侧为“自律至善”，呈对称分布\",\n        \"size_ratio\": \"整体图案占背部面积约30%-40%\"\n      },\n      \"collar_and_sleeve\": {\n        \"location\": \"翻领领口及短袖袖口边缘\",\n        \"content\": \"双道白色细条纹装饰\",\n        \"description\": \"领口与袖口均采用两道平行白色条纹，增强运动感与精致感\"\n      }\n    }\n  }\n}",
-    imageUrl: "/images/case-02.png",
+    imageUrl: "/images/case-02.jpg",
   },
   {
     id: 'case-05',
@@ -113,7 +113,7 @@ export const INSPIRATION_CASES: InspirationCase[] = [
     tags: ["节庆", "欢乐", "温馨", "仪式感"],
     sizes: ["胸口图案：20–28cm"],
     promptJson: "{\n  \"christmas_sweater_design\": {\n    \"style_type\": \"清新趣味圣诞风\",\n    \"garment_type\": \"套头毛衣\",\n    \"colors\": {\n      \"base_color\": \"米白色\",\n      \"accent_colors\": [\n        \"圣诞红\",\n        \"松针绿\",\n        \"金色\",\n        \"暖橙色\"\n      ],\n      \"auxiliary_color\": \"深棕色\"\n    },\n    \"pattern_positions\": {\n      \"front\": {\n        \"location\": \"胸前中心区域（领口下方至腹部上方）\",\n        \"content\": \"苹果切片堆叠而成的圣诞树造型，顶部点缀金色星星与暖橙色蝴蝶结，苹果切片带有果核细节，周围散落金色星光点缀\",\n        \"size\": \"整体图案高度约25-30cm，宽度约18-22cm，占比胸前面积约55%\"\n      }\n    },\n    \"fabric_suggestion\": \"针织毛线面料，宽松休闲版型，柔软亲肤\"\n  }\n}",
-    imageUrl: "/images/case-05.png",
+    imageUrl: "/images/case-05.jpg",
   },
   {
     id: 'case-14',
@@ -128,7 +128,7 @@ export const INSPIRATION_CASES: InspirationCase[] = [
     tags: ["设计感强", "风格多样", "传播力强"],
     sizes: ["正面LOGO位于左胸或中央名片大小", "背面正中央一句solgan（oversize版型）"],
     promptJson: "{\n  \"t_shirt_design\": {\n    \"theme\": \"剧本杀基础店服\",\n    \"style\": \"极简高街风\",\n    \"fit\": \"Oversize (宽松版型/落肩袖)\",\n    \"color_palette\": {\n      \"base_color\": \"碳黑色\",\n      \"print_color\": \"亮银色\"\n    },\n    \"front_details\": {\n      \"position\": \"左胸口\",\n      \"element_type\": \"Logo\",\n      \"content\": \"包含放大镜、钥匙、时钟元素的解谜主题图标及英文\",\n      \"size\": \"小巧精致（约名片大小）\"\n    },\n    \"back_details\": {\n      \"position\": \"后背上半部居中\",\n      \"element_type\": \"Slogan (标语)\",\n      \"content\": \"嘘, 天黑请闭眼\",\n      \"typography\": \"加粗无衬线字体 (黑体变体)\",\n      \"layout\": \"横向大字排版\"\n    }\n  }",
-    imageUrl: "/images/case-14.png",
+    imageUrl: "/images/case-14.jpg",
   },
   {
     id: 'case-06',
@@ -143,7 +143,7 @@ export const INSPIRATION_CASES: InspirationCase[] = [
     tags: ["萌宠", "治愈", "情感表达"],
     sizes: ["胸口大图：30–35cm"],
     promptJson: "{\n  \"pet_design_clothing_design\": {\n    \"style_type\": \"治愈系宠物风\",\n    \"garment_type\": \"圆领长袖T恤（可延伸为卫衣/套头毛衣版型）\",\n    \"colors\": {\n      \"base_color\": \"纯白色\",\n      \"accent_colors\": [\n        \"浅奶咖色\",\n        \"暖棕色\",\n        \"粉米色\"\n      ],\n      \"auxiliary_color\": \"深棕色\"\n    },\n    \"pattern_positions\": {\n      \"front\": {\n        \"location\": \"胸前中心区域（领口下方至腹部上方）\",\n        \"content\": \"以图中浅米色小狗为主体的写实印花，包含小狗立耳、歪头、浅棕毛发与粉棕鼻头的特征，姿态温柔治愈，保留面部与前爪细节，整体风格柔和干净\",\n        \"size\": \"整体图案高度约22-26cm，宽度约16-20cm，占比胸前面积约50%\"\n      }\n    },\n    \"fabric_suggestion\": \"亲肤精梳棉面料，版型宽松舒适，适合日常休闲穿搭\"\n  }\n}",
-    imageUrl: "/images/case-06.png",
+    imageUrl: "/images/case-06.jpg",
   },
   {
     id: 'case-01',
@@ -158,7 +158,7 @@ export const INSPIRATION_CASES: InspirationCase[] = [
     tags: ["渐变晕染", "小标识", "组织名称", "设计感", "简约创意"],
     sizes: ["5cm*8cm 后背9cm*32cm"],
     promptJson: "{\n  \"tshirt_design\": {\n    \"style_type\": \"新中式简约纪念风\",\n    \"colors\": {\n      \"base_color\": \"纯白色\",\n      \"print_colors\": [\n        \"黑色\",\n        \"浅灰蓝/雾霾蓝\",\n        \"红色\",\n        \"深蓝色\"\n      ],\n      \"auxiliary_color\": \"无\"\n    },\n    \"pattern_positions\": {\n      \"front\": {\n        \"location\": \"左胸位置（距离领口下方约15cm处）\",\n        \"content\": \"深蓝色手写体“19th”文字，下方搭配黑色飞机剪影图案\",\n        \"size\": \"整体图案直径约6-8cm\"\n      },\n      \"back\": {\n        \"location\": \"背部中心区域（覆盖肩胛骨下方至腰部以上）\",\n        \"content\": \"大号书法字体“学促”，搭配水墨风格山水云雾与飞机剪影元素，右侧竖排小字“学生就业创业促进会”及红色标识点缀\",\n        \"size_ratio\": \"整体图案占背部面积约50%-60%\"\n      }\n    }\n  }\n}",
-    imageUrl: "/images/case-01.png",
+    imageUrl: "/images/case-01.jpg",
   },
   {
     id: 'case-03',
@@ -173,7 +173,7 @@ export const INSPIRATION_CASES: InspirationCase[] = [
     tags: ["简洁明了"],
     sizes: ["胸前：6cm*7cm", "右臂：8cm*8cm 后背：27cm*28cm"],
     promptJson: "{\n  \"vest_design\": {\n    \"style_type\": \"公益社团活力风\",\n    \"colors\": {\n      \"base_color\": \"正红色\",\n      \"print_colors\": [\n        \"金黄色\"\n      ],\n      \"auxiliary_color\": \"银色（拉链装饰）\"\n    },\n    \"pattern_positions\": {\n      \"front\": {\n        \"location\": \"左胸位置（距离领口下方约10cm处）\",\n        \"content\": \"金黄色火焰/太阳造型的抽象图腾图标，下方搭配金黄色艺术字体“西部梦想”\",\n        \"size\": \"整体图案高度约8-10cm，宽度约6-8cm\"\n      },\n      \"back\": {\n        \"location\": \"背部中心区域（覆盖肩胛骨下方至腰部以上）\",\n        \"content\": \"顶部弧形排列金黄色英文“TKK WEST DREAM”，中间为大号金黄色卡通艺术字体“西部梦想”，底部为小号金黄色辅助文字（公益标语类内容）\",\n        \"size_ratio\": \"整体图案占背部面积约40%-50%\"\n      },\n      \"functional_details\": {\n        \"location\": \"正面衣身两侧\",\n        \"content\": \"对称式直插口袋设计\",\n        \"description\": \"正面左右各一个垂直长方形口袋，兼具实用性与视觉平衡感\"\n      }\n    }\n  }",
-    imageUrl: "/images/case-03.png",
+    imageUrl: "/images/case-03.jpg",
   },
   {
     id: 'case-07',
