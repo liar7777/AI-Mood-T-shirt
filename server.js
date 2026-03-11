@@ -94,6 +94,40 @@ app.post('/api/mockup', async (req, res) => {
   }
 });
 
+// 2.1 Generate white background T-shirt mockup (fixed prompt)
+app.post('/api/mockup-white', async (req, res) => {
+  try {
+    const { designBase64 } = req.body;
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const base64Data = designBase64.split(',')[1];
+
+    const prompt = '生成白底T恤图片。';
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-image-preview',
+      contents: {
+        parts: [
+          { inlineData: { data: base64Data, mimeType: 'image/png' } },
+          { text: prompt },
+        ],
+      },
+      config: {
+        imageConfig: { aspectRatio: "3:4", imageSize: "1K" }
+      }
+    });
+
+    const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
+    if (part) {
+      res.json({ image: `data:image/png;base64,${part.inlineData.data}` });
+    } else {
+      throw new Error("No image in response");
+    }
+  } catch (error) {
+    console.error("Mockup White Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 3. Edit design via refinement tags
 app.post('/api/edit', async (req, res) => {
   try {

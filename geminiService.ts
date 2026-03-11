@@ -49,6 +49,22 @@ export class GeminiService {
     return data.image;
   }
 
+  async generateMockupWhite(designBase64: string): Promise<string> {
+    const response = await fetch('/api/mockup-white', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ designBase64 })
+    });
+
+    if (!response.ok) {
+      const error = await this.parseError(response);
+      throw new Error(error);
+    }
+
+    const data = await response.json();
+    return data.image;
+  }
+
   async editDesign(originalImageBase64: string, instruction: string): Promise<string> {
     const response = await fetch('/api/edit', {
       method: 'POST',

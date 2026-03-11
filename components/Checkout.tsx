@@ -361,7 +361,7 @@ const Checkout: React.FC<{ previewImages?: PreviewImages; onBack?: () => void }>
 
       setEnhancedPreviews({ ...previewImages });
 
-      const generate = async (side: 'front' | 'back', garmentType: '前' | '后') => {
+      const generate = async (side: 'front' | 'back') => {
         const source = side === 'front' ? previewImages?.front : previewImages?.back;
         if (!source) {
           return;
@@ -371,7 +371,7 @@ const Checkout: React.FC<{ previewImages?: PreviewImages; onBack?: () => void }>
         await new Promise((resolve) => setTimeout(resolve, 50));
         try {
           const dataUrl = await ensureDataUrl(source);
-          const result = await gemini.generateMockup(dataUrl, garmentType);
+          const result = await gemini.generateMockupWhite(dataUrl);
           if (cancelled) return;
           setEnhancedPreviews((prev) => ({
             ...(prev ?? {}),
@@ -394,10 +394,7 @@ const Checkout: React.FC<{ previewImages?: PreviewImages; onBack?: () => void }>
         }
       };
 
-      await Promise.all([
-        generate('front', '前'),
-        generate('back', '后'),
-      ]);
+      await Promise.all([generate('front'), generate('back')]);
     };
 
     run();
