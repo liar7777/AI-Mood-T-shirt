@@ -57,6 +57,15 @@ const safeJsonParse = (text, fallback) => {
 };
 
 const analyzeStyleFromImage = async (ai, imageBase64) => {
+  if (process.env.MOCK_GEMINI) {
+    return {
+      theme: 'mock-theme',
+      colors: ['black', 'white'],
+      vibe: 'mock-vibe',
+      elements: ['mock-element'],
+      lighting: 'studio',
+    };
+  }
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-preview',
     contents: {
@@ -105,7 +114,12 @@ const buildAnalysisFromTopic = (topicText) => ({
   lighting: 'clean studio',
 });
 
-const generateSketchFromAnalysis = async (ai, analysis, customPrompt) => {
+const generateSketchFromAnalysis = async (ai, analysis, customPrompt, imageSize = "512") => {
+  if (process.env.MOCK_GEMINI) {
+    console.log('[MOCK_GEMINI] generateSketchFromAnalysis');
+    const payload = Buffer.from('mock-image').toString('base64');
+    return `data:image/png;base64,${payload}`;
+  }
   const prompt = `Create a streetwear graphic design. Theme: ${analysis.theme}. Vibe: ${analysis.vibe}. Colors: ${analysis.colors?.join(', ') || 'black, white'}. Elements: ${analysis.elements?.join(', ') || 'typography'}. High quality, clean graphic design on a solid background, suitable for silk screen printing. ${customPrompt || ''}`;
 
   const response = await ai.models.generateContent({
@@ -114,7 +128,7 @@ const generateSketchFromAnalysis = async (ai, analysis, customPrompt) => {
     config: {
       imageConfig: {
         aspectRatio: "1:1",
-        imageSize: "1K",
+        imageSize,
       },
     },
   });
@@ -129,7 +143,12 @@ const generateSketchFromAnalysis = async (ai, analysis, customPrompt) => {
   throw new Error("No image generated in sketch stage");
 };
 
-const generateMockupWhiteFromDesign = async (ai, designBase64) => {
+const generateMockupWhiteFromDesign = async (ai, designBase64, imageSize = "512") => {
+  if (process.env.MOCK_GEMINI) {
+    console.log('[MOCK_GEMINI] generateMockupWhiteFromDesign');
+    const payload = Buffer.from('mock-mockup').toString('base64');
+    return `data:image/png;base64,${payload}`;
+  }
   const base64Data = stripDataUri(designBase64);
   const prompt = '生成白底T恤图片。';
 
@@ -154,6 +173,11 @@ const generateMockupWhiteFromDesign = async (ai, designBase64) => {
 };
 
 const extractGraphicAsset = async (ai, modelImageBase64) => {
+  if (process.env.MOCK_GEMINI) {
+    console.log('[MOCK_GEMINI] extractGraphicAsset');
+    const payload = Buffer.from('mock-asset').toString('base64');
+    return `data:image/png;base64,${payload}`;
+  }
   const prompt = "Identify the core graphic design on the T-shirt in this photo. Re-create ONLY the graphic as a clean, high-resolution 2D digital asset. Requirements: Pure white background (#FFFFFF), centered, perfectly flat, NO human features, NO clothing folds, NO fabric texture, NO perspective distortion. It should be a production-ready print file.";
 
   const response = await ai.models.generateContent({
@@ -276,7 +300,7 @@ app.post('/api/mockup', async (req, res) => {
         ],
       },
       config: {
-        imageConfig: { aspectRatio: "3:4", imageSize: "1K" }
+        imageConfig: { aspectRatio: "3:4", imageSize }
       }
     });
 
@@ -375,24 +399,33 @@ app.post('/api/internal/stream', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
   if (res.flushHeaders) res.flushHeaders();
 
-  let closed = false;
   const heartbeat = setInterval(() => {
-    if (closed) return;
-    res.write(': ping\n\n');
+    if (res.writableEnded) return;
+    try {
+      res.write(': ping\n\n');
+      if (res.flush) res.flush();
+    } catch {
+      // ignore write errors after close
+    }
   }, 5000);
   req.on('close', () => {
-    closed = true;
     clearInterval(heartbeat);
   });
 
   const sendStep = (payload) => {
-    if (closed) return;
-    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    if (res.writableEnded) return;
+    try {
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+      if (res.flush) res.flush();
+    } catch {
+      // ignore write errors after close
+    }
   };
 
   try {
     const input = req.body?.input || {};
     const options = req.body?.options || {};
+    const lightMode = input.type === 'topic' && options.light_mode !== false;
     if (!input.type) {
       sendStep({ step: 'error', message: 'Missing input.type' });
       return res.end();
@@ -421,20 +454,23 @@ app.post('/api/internal/stream', async (req, res) => {
       return res.end();
     }
 
-    sendStep({ step: 'render', message: '生成印花图...' });
-    const sketchImage = await generateSketchFromAnalysis(ai, analysis, options.custom_prompt);
+    const shouldGeneratePrint = lightMode ? false : options.generate_print !== false;
+    const shouldGeneratePdf = lightMode ? false : options.generate_pdf !== false;
 
-    sendStep({ step: 'render', message: '生成模特效果图（图生图）...' });
-    const modelImage = await generateMockupWhiteFromDesign(ai, sketchImage);
+    sendStep({ step: 'render', message: '生成印花图（低清）...' });
+    const sketchImage = await generateSketchFromAnalysis(ai, analysis, options.custom_prompt, "512");
+
+    sendStep({ step: 'render', message: '生成模特效果图（图生图/低清）...' });
+    const modelImage = await generateMockupWhiteFromDesign(ai, sketchImage, "512");
 
     let printAsset = '';
-    if (options.generate_print !== false) {
+    if (shouldGeneratePrint) {
       sendStep({ step: 'asset', message: '提取印花资产...' });
       printAsset = await extractGraphicAsset(ai, modelImage);
     }
 
     let pdfs = {};
-    if (options.generate_pdf !== false) {
+    if (shouldGeneratePdf) {
       sendStep({ step: 'pdf', message: '生成生产单 PDF...' });
       pdfs = await createOrderPdfs({
         topic: input.topic_text,
