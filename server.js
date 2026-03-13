@@ -114,7 +114,7 @@ const buildAnalysisFromTopic = (topicText) => ({
   lighting: 'clean studio',
 });
 
-const generateSketchFromAnalysis = async (ai, analysis, customPrompt, imageSize = "512") => {
+const generateSketchFromAnalysis = async (ai, analysis, customPrompt, imageSize = "1K") => {
   if (process.env.MOCK_GEMINI) {
     console.log('[MOCK_GEMINI] generateSketchFromAnalysis');
     const payload = Buffer.from('mock-image').toString('base64');
@@ -143,7 +143,7 @@ const generateSketchFromAnalysis = async (ai, analysis, customPrompt, imageSize 
   throw new Error("No image generated in sketch stage");
 };
 
-const generateMockupWhiteFromDesign = async (ai, designBase64, imageSize = "512") => {
+const generateMockupWhiteFromDesign = async (ai, designBase64, imageSize = "1K") => {
   if (process.env.MOCK_GEMINI) {
     console.log('[MOCK_GEMINI] generateMockupWhiteFromDesign');
     const payload = Buffer.from('mock-mockup').toString('base64');
@@ -457,11 +457,11 @@ app.post('/api/internal/stream', async (req, res) => {
     const shouldGeneratePrint = lightMode ? false : options.generate_print !== false;
     const shouldGeneratePdf = lightMode ? false : options.generate_pdf !== false;
 
-    sendStep({ step: 'render', message: '生成印花图（低清）...' });
-    const sketchImage = await generateSketchFromAnalysis(ai, analysis, options.custom_prompt, "512");
+    sendStep({ step: 'render', message: '生成印花图（轻量）...' });
+    const sketchImage = await generateSketchFromAnalysis(ai, analysis, options.custom_prompt, "1K");
 
-    sendStep({ step: 'render', message: '生成模特效果图（图生图/低清）...' });
-    const modelImage = await generateMockupWhiteFromDesign(ai, sketchImage, "512");
+    sendStep({ step: 'render', message: '生成模特效果图（图生图/轻量）...' });
+    const modelImage = await generateMockupWhiteFromDesign(ai, sketchImage, "1K");
 
     let printAsset = '';
     if (shouldGeneratePrint) {
