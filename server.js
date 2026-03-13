@@ -105,28 +105,16 @@ const buildAnalysisFromTopic = (topicText) => ({
   lighting: 'clean studio',
 });
 
-const generateModelImage = async (ai, analysis, customPrompt, imageSize = "1K") => {
-  const jsonStr = JSON.stringify(analysis, null, 2);
-  const prompt = `You are a high-end fashion AI designer.
-INPUT STYLE CONTEXT: ${jsonStr}
-
-TASK: Generate a professional fashion editorial photograph of a single model.
-CLOTHING: The model must be wearing a premium heavy-cotton T-shirt.
-GRAPHIC DESIGN: The T-shirt must feature a central graphic design that is an ARTISTIC INTERPRETATION of the input style elements.
-
-CRITICAL INSTRUCTIONS:
-- DO NOT include literal text like "${analysis.vibe}" or "${analysis.theme}" on the shirt.
-- Translate concepts into visual motifs.
-- Maintain the original lighting and atmosphere: ${analysis.lighting}.
-${customPrompt ? `- ADDITIONAL USER DIRECTION: ${customPrompt}` : ""}`;
+const generateSketchFromAnalysis = async (ai, analysis, customPrompt) => {
+  const prompt = `Create a streetwear graphic design. Theme: ${analysis.theme}. Vibe: ${analysis.vibe}. Colors: ${analysis.colors?.join(', ') || 'black, white'}. Elements: ${analysis.elements?.join(', ') || 'typography'}. High quality, clean graphic design on a solid background, suitable for silk screen printing. ${customPrompt || ''}`;
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-image-preview',
     contents: { parts: [{ text: prompt }] },
     config: {
       imageConfig: {
-        aspectRatio: "3:4",
-        imageSize,
+        aspectRatio: "1:1",
+        imageSize: "1K",
       },
     },
   });
@@ -138,7 +126,31 @@ ${customPrompt ? `- ADDITIONAL USER DIRECTION: ${customPrompt}` : ""}`;
       }
     }
   }
-  throw new Error("No image generated in model stage");
+  throw new Error("No image generated in sketch stage");
+};
+
+const generateMockupWhiteFromDesign = async (ai, designBase64) => {
+  const base64Data = stripDataUri(designBase64);
+  const prompt = '生成白底T恤图片。';
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-pro-image-preview',
+    contents: {
+      parts: [
+        { inlineData: { data: base64Data, mimeType: 'image/png' } },
+        { text: prompt },
+      ],
+    },
+    config: {
+      imageConfig: { aspectRatio: "3:4", imageSize: "1K" }
+    }
+  });
+
+  const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
+  if (part) {
+    return `data:image/png;base64,${part.inlineData.data}`;
+  }
+  throw new Error("No image generated in mockup-white stage");
 };
 
 const extractGraphicAsset = async (ai, modelImageBase64) => {
@@ -409,8 +421,11 @@ app.post('/api/internal/stream', async (req, res) => {
       return res.end();
     }
 
-    sendStep({ step: 'render', message: '生成模特效果图（快速）...' });
-    const modelImage = await generateModelImage(ai, analysis, options.custom_prompt, "512");
+    sendStep({ step: 'render', message: '生成印花图...' });
+    const sketchImage = await generateSketchFromAnalysis(ai, analysis, options.custom_prompt);
+
+    sendStep({ step: 'render', message: '生成模特效果图（图生图）...' });
+    const modelImage = await generateMockupWhiteFromDesign(ai, sketchImage);
 
     let printAsset = '';
     if (options.generate_print !== false) {
@@ -434,7 +449,7 @@ app.post('/api/internal/stream', async (req, res) => {
       result: {
         images: {
           mockup: ensureDataUri(modelImage, 'image/png'),
-          print_asset: ensureDataUri(printAsset, 'image/png'),
+          print_asset: ensureDataUri(printAsset || sketchImage, 'image/png'),
         },
         pdfs: pdfs.garmentOrder
           ? {
