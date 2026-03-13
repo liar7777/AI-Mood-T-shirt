@@ -108,11 +108,11 @@ const DEFAULT_ORDER = {
   notes: '对齐胸前安全区，避免袖口与缝线。',
 };
 
-const buildOrderData = ({ mockupImage, printAssetImage, topic }) => ({
+const buildOrderData = ({ mockupImage, printAssetImage, backMockupImage, topic }) => ({
   ...DEFAULT_ORDER,
   // Use mockup / print asset as the preview reference
   designPreviewUrl: printAssetImage || mockupImage || '',
-  designBackUrl: '',
+  designBackUrl: backMockupImage || '',
   designSideUrl: '',
   // Keep topic in notes if provided for traceability
   notes: topic ? `${DEFAULT_ORDER.notes} | Topic: ${topic}` : DEFAULT_ORDER.notes,
@@ -341,14 +341,15 @@ const generateSketchFromAnalysis = async (ai, analysis, customPrompt, imageSize 
   throw new Error("No image generated in sketch stage");
 };
 
-const generateMockupWhiteFromDesign = async (ai, designBase64, styleHint = '', imageSize = "1K") => {
+const generateMockupWhiteFromDesign = async (ai, designBase64, styleHint = '', view = 'front', imageSize = "1K") => {
   if (process.env.MOCK_GEMINI) {
     console.log('[MOCK_GEMINI] generateMockupWhiteFromDesign');
     return MOCK_PNG_DATA;
   }
   const base64Data = stripDataUri(designBase64);
   const styleLine = styleHint ? `T恤整体配色与印花风格参考：${styleHint}。` : '';
-  const prompt = `生成纯白背景的T恤模特图，将提供的印花贴到T恤正面。${styleLine}仅体现在图案/色彩风格，不要生成任何文字，不要在衣服上写字。背景必须完全干净。`;
+  const viewLine = view === 'back' ? '生成同一件T恤的背面视图，可略微变化，但需与正面一致。' : '生成T恤正面视图。';
+  const prompt = `生成纯白背景的平整T恤（无模特、无人体），将提供的印花贴到T恤${view === 'back' ? '背面' : '正面'}。${viewLine}${styleLine}仅体现在图案/色彩风格，不要生成任何文字，不要在衣服上写字。背景必须完全干净，画面只包含T恤。`;
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-image-preview',
@@ -408,10 +409,11 @@ const extractGraphicAsset = async (ai, modelImageBase64) => {
   throw new Error("No image generated in asset extraction stage");
 };
 
-const createOrderPdfs = async ({ topic, analysis, modelImageBase64, printAssetBase64 }) => {
+const createOrderPdfs = async ({ topic, analysis, modelImageBase64, printAssetBase64, backImageBase64 }) => {
   const order = buildOrderData({
     mockupImage: modelImageBase64,
     printAssetImage: printAssetBase64,
+    backMockupImage: backImageBase64,
     topic: topic || analysis?.theme,
   });
 
@@ -660,9 +662,10 @@ app.post('/api/internal/stream', async (req, res) => {
     sendStep({ step: 'render', message: '生成印花图（轻量）...' });
     const sketchImage = await generateSketchFromAnalysis(ai, analysis, options.custom_prompt, "1K");
 
-    sendStep({ step: 'render', message: '生成模特效果图（图生图/轻量）...' });
+    sendStep({ step: 'render', message: '生成平铺T恤效果图（图生图/轻量）...' });
     const styleHint = input.type === 'topic' ? input.topic_text : '';
-    const modelImage = await generateMockupWhiteFromDesign(ai, sketchImage, styleHint, "1K");
+    const modelImage = await generateMockupWhiteFromDesign(ai, sketchImage, styleHint, 'front', "1K");
+    const backImage = await generateMockupWhiteFromDesign(ai, sketchImage, styleHint, 'back', "1K");
 
     // Emit mockup immediately for "light mode" fast preview usage
     sendStep({
@@ -670,6 +673,7 @@ app.post('/api/internal/stream', async (req, res) => {
       result: {
         images: {
           mockup: ensureDataUri(modelImage, 'image/png'),
+          mockup_back: ensureDataUri(backImage, 'image/png'),
         },
       },
     });
@@ -687,6 +691,7 @@ app.post('/api/internal/stream', async (req, res) => {
         topic: input.topic_text,
         analysis,
         modelImageBase64: modelImage,
+        backImageBase64: backImage,
         // In light mode, reuse mockup as print image to avoid extra extraction step
         printAssetBase64: printAsset || modelImage,
       });
@@ -697,6 +702,7 @@ app.post('/api/internal/stream', async (req, res) => {
       result: {
         images: {
           mockup: ensureDataUri(modelImage, 'image/png'),
+          mockup_back: ensureDataUri(backImage, 'image/png'),
           print_asset: ensureDataUri(printAsset || modelImage, 'image/png'),
         },
         pdfs: pdfs.garmentOrder
