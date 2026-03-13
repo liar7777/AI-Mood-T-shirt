@@ -204,10 +204,20 @@ const renderOrderHtml = ({ type, order, qrDataUrl }) => {
                       ${preview ? `<img src="${preview}" alt="前" class="w-full h-24 object-contain" />` : `<span class="text-xs text-zinc-400">前</span>`}
                     </div>
                     <div class="border border-black/10 rounded-md p-2 text-center">
-                      ${back ? `<img src="${back}" alt="后" class="w-full h-24 object-contain" />` : `<span class="text-xs text-zinc-400">后</span>`}
+                      ${back
+                        ? `<img src="${back}" alt="后" class="w-full h-24 object-contain" />`
+                        : `<div class="w-full h-24 rounded-md bg-zinc-100 flex flex-col items-center justify-center text-zinc-400 text-[10px]">
+                             <div>后</div>
+                             <div>默认版型</div>
+                           </div>`}
                     </div>
                     <div class="border border-black/10 rounded-md p-2 text-center">
-                      ${side ? `<img src="${side}" alt="侧" class="w-full h-24 object-contain" />` : `<span class="text-xs text-zinc-400">侧</span>`}
+                      ${side
+                        ? `<img src="${side}" alt="侧" class="w-full h-24 object-contain" />`
+                        : `<div class="w-full h-24 rounded-md bg-zinc-100 flex flex-col items-center justify-center text-zinc-400 text-[10px]">
+                             <div>侧</div>
+                             <div>默认版型</div>
+                           </div>`}
                     </div>
                   </div>
                 </div>
