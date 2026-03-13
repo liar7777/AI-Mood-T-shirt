@@ -341,13 +341,14 @@ const generateSketchFromAnalysis = async (ai, analysis, customPrompt, imageSize 
   throw new Error("No image generated in sketch stage");
 };
 
-const generateMockupWhiteFromDesign = async (ai, designBase64, imageSize = "1K") => {
+const generateMockupWhiteFromDesign = async (ai, designBase64, styleHint = '', imageSize = "1K") => {
   if (process.env.MOCK_GEMINI) {
     console.log('[MOCK_GEMINI] generateMockupWhiteFromDesign');
     return MOCK_PNG_DATA;
   }
   const base64Data = stripDataUri(designBase64);
-  const prompt = '生成白底T恤图片。';
+  const styleLine = styleHint ? `T恤整体配色与印花风格参考：${styleHint}。` : '';
+  const prompt = `生成纯白背景的T恤模特图，将提供的印花贴到T恤正面。${styleLine}仅体现在图案/色彩风格，不要生成任何文字，不要在衣服上写字。背景必须完全干净。`;
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-image-preview',
@@ -660,7 +661,8 @@ app.post('/api/internal/stream', async (req, res) => {
     const sketchImage = await generateSketchFromAnalysis(ai, analysis, options.custom_prompt, "1K");
 
     sendStep({ step: 'render', message: '生成模特效果图（图生图/轻量）...' });
-    const modelImage = await generateMockupWhiteFromDesign(ai, sketchImage, "1K");
+    const styleHint = input.type === 'topic' ? input.topic_text : '';
+    const modelImage = await generateMockupWhiteFromDesign(ai, sketchImage, styleHint, "1K");
 
     // Emit mockup immediately for "light mode" fast preview usage
     sendStep({
