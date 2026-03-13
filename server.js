@@ -13,7 +13,8 @@ try {
 }
 const express = require('express');
 const path = require('path');
-const { GoogleGenAI } = require("@google/genai");
+const { GoogleGenAI, Type } = require("@google/genai");
+const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 const app = express();
 
 // Increase JSON limit to handle base64 image strings
@@ -22,6 +23,218 @@ app.use(express.json({ limit: '10mb' }));
 // Static files directory
 const distPath = path.join(__dirname, 'dist');
 app.use(express.static(distPath));
+
+const INTERNAL_TOKEN_HEADER = 'x-internal-token';
+
+const ensureDataUri = (value, mimeType) => {
+  if (!value) return '';
+  if (value.startsWith('data:')) return value;
+  return `data:${mimeType};base64,${value}`;
+};
+
+const stripDataUri = (value) => {
+  if (!value) return '';
+  return value.includes(',') ? value.split(',')[1] : value;
+};
+
+const dataUriToBytes = (dataUri) => {
+  const base64 = stripDataUri(dataUri);
+  return Buffer.from(base64, 'base64');
+};
+
+const getMimeFromDataUri = (dataUri, fallback = 'image/png') => {
+  if (!dataUri || !dataUri.startsWith('data:')) return fallback;
+  const match = dataUri.match(/^data:([^;]+);base64,/);
+  return match ? match[1] : fallback;
+};
+
+const safeJsonParse = (text, fallback) => {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return fallback;
+  }
+};
+
+const analyzeStyleFromImage = async (ai, imageBase64) => {
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-pro-preview',
+    contents: {
+      parts: [
+        {
+          inlineData: {
+            mimeType: 'image/png',
+            data: stripDataUri(imageBase64),
+          },
+        },
+        {
+          text: "Analyze this fashion image. Extract the core visual identity (theme, color palette, vibe, and specific graphic elements). Return a valid JSON object.",
+        },
+      ],
+    },
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          theme: { type: Type.STRING },
+          colors: { type: Type.ARRAY, items: { type: Type.STRING } },
+          vibe: { type: Type.STRING },
+          elements: { type: Type.ARRAY, items: { type: Type.STRING } },
+          lighting: { type: Type.STRING },
+        },
+        required: ["theme", "colors", "vibe", "elements", "lighting"],
+      },
+    },
+  });
+
+  return safeJsonParse(response.text || '{}', {
+    theme: 'streetwear',
+    colors: ['black', 'white'],
+    vibe: 'urban',
+    elements: ['typography'],
+    lighting: 'studio',
+  });
+};
+
+const analyzeStyleFromTopic = async (ai, topicText) => {
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-pro-preview',
+    contents: {
+      parts: [
+        {
+          text: `Given the topic "${topicText}", infer a fashion style analysis. Return a JSON object with theme, colors, vibe, elements, lighting.`,
+        },
+      ],
+    },
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          theme: { type: Type.STRING },
+          colors: { type: Type.ARRAY, items: { type: Type.STRING } },
+          vibe: { type: Type.STRING },
+          elements: { type: Type.ARRAY, items: { type: Type.STRING } },
+          lighting: { type: Type.STRING },
+        },
+        required: ["theme", "colors", "vibe", "elements", "lighting"],
+      },
+    },
+  });
+
+  return safeJsonParse(response.text || '{}', {
+    theme: topicText || 'streetwear',
+    colors: ['black', 'white'],
+    vibe: 'urban',
+    elements: ['typography'],
+    lighting: 'studio',
+  });
+};
+
+const generateModelImage = async (ai, analysis, customPrompt) => {
+  const jsonStr = JSON.stringify(analysis, null, 2);
+  const prompt = `You are a high-end fashion AI designer.
+INPUT STYLE CONTEXT: ${jsonStr}
+
+TASK: Generate a professional fashion editorial photograph of a single model.
+CLOTHING: The model must be wearing a premium heavy-cotton T-shirt.
+GRAPHIC DESIGN: The T-shirt must feature a central graphic design that is an ARTISTIC INTERPRETATION of the input style elements.
+
+CRITICAL INSTRUCTIONS:
+- DO NOT include literal text like "${analysis.vibe}" or "${analysis.theme}" on the shirt.
+- Translate concepts into visual motifs.
+- Maintain the original lighting and atmosphere: ${analysis.lighting}.
+${customPrompt ? `- ADDITIONAL USER DIRECTION: ${customPrompt}` : ""}`;
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-pro-image-preview',
+    contents: { parts: [{ text: prompt }] },
+    config: {
+      imageConfig: {
+        aspectRatio: "3:4",
+        imageSize: "1K",
+      },
+    },
+  });
+
+  for (const candidate of response.candidates || []) {
+    for (const part of candidate.content.parts) {
+      if (part.inlineData) {
+        return `data:image/png;base64,${part.inlineData.data}`;
+      }
+    }
+  }
+  throw new Error("No image generated in model stage");
+};
+
+const extractGraphicAsset = async (ai, modelImageBase64) => {
+  const prompt = "Identify the core graphic design on the T-shirt in this photo. Re-create ONLY the graphic as a clean, high-resolution 2D digital asset. Requirements: Pure white background (#FFFFFF), centered, perfectly flat, NO human features, NO clothing folds, NO fabric texture, NO perspective distortion. It should be a production-ready print file.";
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-pro-image-preview',
+    contents: {
+      parts: [
+        {
+          inlineData: {
+            mimeType: 'image/png',
+            data: stripDataUri(modelImageBase64),
+          },
+        },
+        { text: prompt },
+      ],
+    },
+    config: {
+      imageConfig: {
+        aspectRatio: "1:1",
+        imageSize: "1K",
+      },
+    },
+  });
+
+  for (const candidate of response.candidates || []) {
+    for (const part of candidate.content.parts) {
+      if (part.inlineData) {
+        return `data:image/png;base64,${part.inlineData.data}`;
+      }
+    }
+  }
+  throw new Error("No image generated in asset extraction stage");
+};
+
+const createOrderPdfs = async ({ topic, analysis, modelImageBase64, printAssetBase64 }) => {
+  const buildDoc = async (title, imageDataUri) => {
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([595, 842]);
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    page.drawText(title, { x: 50, y: 800, size: 18, font, color: rgb(0, 0, 0) });
+    page.drawText(`Topic: ${topic || analysis?.theme || 'N/A'}`, { x: 50, y: 770, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
+    page.drawText(`Vibe: ${analysis?.vibe || 'N/A'}`, { x: 50, y: 755, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
+
+    if (imageDataUri) {
+      const mime = getMimeFromDataUri(imageDataUri, 'image/png');
+      const imageBytes = dataUriToBytes(imageDataUri);
+      const embedded = mime.includes('jpeg') ? await pdfDoc.embedJpg(imageBytes) : await pdfDoc.embedPng(imageBytes);
+      const { width, height } = embedded.scale(1);
+      const maxWidth = 420;
+      const maxHeight = 420;
+      const scale = Math.min(maxWidth / width, maxHeight / height, 1);
+      const drawWidth = width * scale;
+      const drawHeight = height * scale;
+      const x = 50;
+      const y = 300;
+      page.drawImage(embedded, { x, y, width: drawWidth, height: drawHeight });
+    }
+
+    const pdfBase64 = await pdfDoc.saveAsBase64({ dataUri: true });
+    return pdfBase64;
+  };
+
+  const garmentOrder = await buildDoc('Garment_Order', modelImageBase64);
+  const printOrder = await buildDoc('Print_Order', printAssetBase64);
+
+  return { garmentOrder, printOrder };
+};
 
 /**
  * GEMINI API PROXY ROUTES
@@ -157,6 +370,98 @@ app.post('/api/edit', async (req, res) => {
   } catch (error) {
     console.error("Edit Error:", error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Internal SSE stream for OpenClaw (not for frontend)
+app.post('/api/internal/stream', async (req, res) => {
+  const internalToken = process.env.INTERNAL_TOKEN;
+  if (!internalToken) {
+    return res.status(500).json({ error: 'INTERNAL_TOKEN not configured' });
+  }
+  const provided = req.headers[INTERNAL_TOKEN_HEADER];
+  if (provided !== internalToken) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  if (res.flushHeaders) res.flushHeaders();
+
+  let closed = false;
+  req.on('close', () => {
+    closed = true;
+  });
+
+  const sendStep = (payload) => {
+    if (closed) return;
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  };
+
+  try {
+    const input = req.body?.input || {};
+    const options = req.body?.options || {};
+    if (!input.type) {
+      sendStep({ step: 'error', message: 'Missing input.type' });
+      return res.end();
+    }
+
+    sendStep({ step: 'start', message: '收到指令，初始化中...' });
+
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    let analysis;
+    if (input.type === 'image') {
+      if (!input.image_base64) {
+        sendStep({ step: 'error', message: 'Missing image_base64' });
+        return res.end();
+      }
+      sendStep({ step: 'analyze', message: '解析风格中...' });
+      analysis = await analyzeStyleFromImage(ai, input.image_base64);
+    } else if (input.type === 'topic') {
+      if (!input.topic_text) {
+        sendStep({ step: 'error', message: 'Missing topic_text' });
+        return res.end();
+      }
+      sendStep({ step: 'analyze', message: '生成风格结构中...' });
+      analysis = await analyzeStyleFromTopic(ai, input.topic_text);
+    } else {
+      sendStep({ step: 'error', message: 'Unsupported input.type' });
+      return res.end();
+    }
+
+    sendStep({ step: 'render', message: '生成模特效果图...' });
+    const modelImage = await generateModelImage(ai, analysis, options.custom_prompt);
+
+    sendStep({ step: 'asset', message: '提取印花资产...' });
+    const printAsset = await extractGraphicAsset(ai, modelImage);
+
+    sendStep({ step: 'pdf', message: '生成生产单 PDF...' });
+    const pdfs = await createOrderPdfs({
+      topic: input.topic_text,
+      analysis,
+      modelImageBase64: modelImage,
+      printAssetBase64: printAsset,
+    });
+
+    sendStep({
+      step: 'completed',
+      result: {
+        images: {
+          mockup: ensureDataUri(modelImage, 'image/png'),
+          print_asset: ensureDataUri(printAsset, 'image/png'),
+        },
+        pdfs: {
+          garment_order: pdfs.garmentOrder,
+          print_order: pdfs.printOrder,
+        },
+      },
+    });
+    res.end();
+  } catch (error) {
+    sendStep({ step: 'error', message: error.message || 'Unknown error' });
+    res.end();
   }
 });
 
