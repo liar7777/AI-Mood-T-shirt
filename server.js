@@ -97,40 +97,13 @@ const analyzeStyleFromImage = async (ai, imageBase64) => {
   });
 };
 
-const analyzeStyleFromTopic = async (ai, topicText) => {
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview',
-    contents: {
-      parts: [
-        {
-          text: `Given the topic "${topicText}", infer a fashion style analysis. Return a JSON object with theme, colors, vibe, elements, lighting.`,
-        },
-      ],
-    },
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          theme: { type: Type.STRING },
-          colors: { type: Type.ARRAY, items: { type: Type.STRING } },
-          vibe: { type: Type.STRING },
-          elements: { type: Type.ARRAY, items: { type: Type.STRING } },
-          lighting: { type: Type.STRING },
-        },
-        required: ["theme", "colors", "vibe", "elements", "lighting"],
-      },
-    },
-  });
-
-  return safeJsonParse(response.text || '{}', {
-    theme: topicText || 'streetwear',
-    colors: ['black', 'white'],
-    vibe: 'urban',
-    elements: ['typography'],
-    lighting: 'studio',
-  });
-};
+const buildAnalysisFromTopic = (topicText) => ({
+  theme: topicText || 'streetwear',
+  colors: ['black', 'white', 'cobalt blue'],
+  vibe: 'urban, bold, meme-driven',
+  elements: ['bold typography', 'minimal icon', 'glitch accents'],
+  lighting: 'clean studio',
+});
 
 const generateModelImage = async (ai, analysis, customPrompt) => {
   const jsonStr = JSON.stringify(analysis, null, 2);
@@ -391,8 +364,13 @@ app.post('/api/internal/stream', async (req, res) => {
   if (res.flushHeaders) res.flushHeaders();
 
   let closed = false;
+  const heartbeat = setInterval(() => {
+    if (closed) return;
+    res.write(': ping\n\n');
+  }, 5000);
   req.on('close', () => {
     closed = true;
+    clearInterval(heartbeat);
   });
 
   const sendStep = (payload) => {
@@ -424,8 +402,8 @@ app.post('/api/internal/stream', async (req, res) => {
         sendStep({ step: 'error', message: 'Missing topic_text' });
         return res.end();
       }
-      sendStep({ step: 'analyze', message: '生成风格结构中...' });
-      analysis = await analyzeStyleFromTopic(ai, input.topic_text);
+      sendStep({ step: 'analyze', message: '生成风格结构中（本地）...' });
+      analysis = buildAnalysisFromTopic(input.topic_text);
     } else {
       sendStep({ step: 'error', message: 'Unsupported input.type' });
       return res.end();
@@ -462,6 +440,8 @@ app.post('/api/internal/stream', async (req, res) => {
   } catch (error) {
     sendStep({ step: 'error', message: error.message || 'Unknown error' });
     res.end();
+  } finally {
+    clearInterval(heartbeat);
   }
 });
 
