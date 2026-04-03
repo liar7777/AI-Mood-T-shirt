@@ -56,7 +56,7 @@ const App: React.FC = () => {
           isLoading={isRecipeLoading}
           loadingText="配方加载中"
           onNext={handleCheckout}
-          onBack={() => setView('CHAT')}
+          onBack={() => setView('LANDING')}
         />
       )}
 

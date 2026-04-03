@@ -64,7 +64,7 @@ const InspirationFlow: React.FC<Props> = ({ onSelect }) => {
     <div className="p-4 space-y-6">
       <div className="flex justify-between items-end px-2">
         <div>
-          <h2 className="text-2xl font-bold italic">今日爆梗</h2>
+          <h2 className="text-2xl font-bold italic">明日爆梗</h2>
           <p className="text-xs text-zinc-500 font-mono">灵感发现 · 实时案例</p>
         </div>
         <div className="flex gap-1">
