@@ -64,10 +64,16 @@ const DEFAULT_SCALE: Record<PositionType, number> = {
   '侧': 0.375,
 };
 
-const POSITION_IMAGES: Record<PositionType, string> = {
+const DEFAULT_POSITION_IMAGES: Record<PositionType, string> = {
   '前': '/mockups/front.jpg',
   '后': '/mockups/back.jpg',
   '侧': '/mockups/side.jpg',
+};
+
+const FEMALE_POSITION_IMAGES: Record<PositionType, string> = {
+  '前': '/mockups/wfront.jpg',
+  '后': '/mockups/wback.jpg',
+  '侧': '/mockups/wside.jpg',
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -80,6 +86,7 @@ const MockupLab: React.FC<Props> = ({ designUrl, isLoading = false, loadingText 
     '侧': '',
   });
   const [mockupImage, setMockupImage] = useState<string | null>(null);
+  const [positionImages, setPositionImages] = useState<Record<PositionType, string>>(DEFAULT_POSITION_IMAGES);
   const [positionType, setPositionType] = useState<PositionType>('前');
   const [isUpdating, setIsUpdating] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('2D');
@@ -114,6 +121,11 @@ const MockupLab: React.FC<Props> = ({ designUrl, isLoading = false, loadingText 
     '前': { top: 0, right: 0, bottom: 0, left: 0 },
     '后': { top: 0, right: 0, bottom: 0, left: 0 },
     '侧': { top: 0, right: 0, bottom: 0, left: 0 },
+  });
+  const [designAspectMap, setDesignAspectMap] = useState<Record<PositionType, number>>({
+    '前': 1,
+    '后': 1,
+    '侧': 1,
   });
   const [cropInsets, setCropInsets] = useState<CropInsets>({ top: 0, right: 0, bottom: 0, left: 0 });
   const [touchedPositions, setTouchedPositions] = useState<Record<PositionType, boolean>>({
@@ -172,6 +184,23 @@ const MockupLab: React.FC<Props> = ({ designUrl, isLoading = false, loadingText 
     setCurrentDesign(designMap[positionType] || '');
   }, [positionType, designPosMap, designScaleXMap, designScaleYMap, designRotateMap, cropMap, designMap]);
 
+  // 当当前 position 的设计图发生改变时，加载以获取宽高比以便在编辑区保持图片原始比例
+  useEffect(() => {
+    const src = designMap[positionType] || currentDesign;
+    if (!src) return;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const aspect = (img.naturalWidth || img.width) / (img.naturalHeight || img.height || 1) || 1;
+      setDesignAspectMap((prev) => ({ ...prev, [positionType]: aspect }));
+    };
+    img.onerror = () => {
+      // fallback to 1
+      setDesignAspectMap((prev) => ({ ...prev, [positionType]: 1 }));
+    };
+    img.src = src;
+  }, [currentDesign, designMap, positionType]);
+
   const baseSize = useMemo(() => {
     if (!stage.w || !stage.h) return 0;
     return Math.min(stage.w, stage.h) * 0.46;
@@ -228,8 +257,10 @@ const MockupLab: React.FC<Props> = ({ designUrl, isLoading = false, loadingText 
   };
 
   const designStyle = useMemo(() => {
+    // 以宽度为基准，保持图片宽高比
+    const aspect = designAspectMap[positionType] ?? 1;
     const fullWidth = baseSize * designScaleX;
-    const fullHeight = baseSize * designScaleY;
+    const fullHeight = Math.max(4, fullWidth / aspect);
     const visibleWidth = fullWidth * (1 - cropInsets.left - cropInsets.right);
     const visibleHeight = fullHeight * (1 - cropInsets.top - cropInsets.bottom);
     const offsetX = ((cropInsets.left - cropInsets.right) / 2) * fullWidth;
@@ -248,7 +279,7 @@ const MockupLab: React.FC<Props> = ({ designUrl, isLoading = false, loadingText 
       left: `${left}px`,
       top: `${top}px`,
     } as React.CSSProperties;
-  }, [baseSize, designScaleX, designScaleY, designPos, designRotate, stage, safeBox, cropInsets]);
+  }, [baseSize, designScaleX, designAspectMap, designPos, designRotate, stage, safeBox, cropInsets, positionType]);
   const startDrag = (mode: DragMode, e: React.PointerEvent) => {
     if (!stage.w || !stage.h) return;
     if (e.pointerType === 'touch') {
@@ -256,8 +287,9 @@ const MockupLab: React.FC<Props> = ({ designUrl, isLoading = false, loadingText 
     }
     e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    const aspect = designAspectMap[positionType] ?? 1;
     const width = baseSize * designScaleX;
-    const height = baseSize * designScaleY;
+    const height = Math.max(4, width / aspect);
     dragRef.current = {
       mode,
       startX: e.clientX,
@@ -292,8 +324,9 @@ const MockupLab: React.FC<Props> = ({ designUrl, isLoading = false, loadingText 
     if (drag.mode === 'move') {
       const nextX = drag.startPos.x + dx / stage.w;
       const nextY = drag.startPos.y + dy / stage.h;
+      const aspect = designAspectMap[positionType] ?? 1;
       const fullWidth = baseSize * designScaleX;
-      const fullHeight = baseSize * designScaleY;
+      const fullHeight = Math.max(4, fullWidth / aspect);
       const visibleWidth = fullWidth * (1 - cropInsets.left - cropInsets.right);
       const visibleHeight = fullHeight * (1 - cropInsets.top - cropInsets.bottom);
       // use visible (cropped) size when constraining center so movement range follows crop
@@ -555,8 +588,24 @@ const MockupLab: React.FC<Props> = ({ designUrl, isLoading = false, loadingText 
     if (currentDesign && !currentDesign.startsWith('data:')) lastDesignRef.current = currentDesign;
   }, [currentDesign]);
 
+  // 监听全局性别切换事件，实时替换用于渲染的底衫模板
+  useEffect(() => {
+    const handler = (e: Event) => {
+      try {
+        // @ts-ignore
+        const g = (e as CustomEvent)?.detail?.gender;
+        if (g === 'female') setPositionImages(FEMALE_POSITION_IMAGES);
+        else setPositionImages(DEFAULT_POSITION_IMAGES);
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener('trie:gender-change', handler as EventListener);
+    return () => window.removeEventListener('trie:gender-change', handler as EventListener);
+  }, []);
+
   const renderComposite = async (pos: PositionType, designSrc: string) => {
-    const baseSrc = POSITION_IMAGES[pos];
+    const baseSrc = positionImages[pos];
     const loadImage = (src: string) =>
       new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image();
@@ -577,8 +626,11 @@ const MockupLab: React.FC<Props> = ({ designUrl, isLoading = false, loadingText 
 
     const ratio = SAFE_BOX_RATIO[pos];
     const baseSize = Math.min(canvas.width, canvas.height) * 0.46;
-    const sizeW = baseSize * (designScaleXMap[pos] ?? DEFAULT_SCALE[pos]);
-    const sizeH = baseSize * (designScaleYMap[pos] ?? DEFAULT_SCALE[pos]);
+    // 先按当前缩放计算目标尺寸，再确保不会超出安全区，必要时做等比缩放
+    let sizeW = baseSize * (designScaleXMap[pos] ?? DEFAULT_SCALE[pos]);
+    let sizeH = baseSize * (designScaleYMap[pos] ?? DEFAULT_SCALE[pos]);
+    
+    // 计算胸前安全区并把图案缩放到不超过安全区
     const centerX = canvas.width * (designPosMap[pos]?.x ?? 0.5);
     const centerY = canvas.height * (designPosMap[pos]?.y ?? 0.45);
     const safeBox = {
@@ -587,8 +639,28 @@ const MockupLab: React.FC<Props> = ({ designUrl, isLoading = false, loadingText 
       w: canvas.width * ratio.width,
       h: canvas.height * ratio.height,
     };
-    const halfW = sizeW / 2;
-    const halfH = sizeH / 2;
+    const scaleFactor = Math.min(1, safeBox.w / sizeW || 1, safeBox.h / sizeH || 1);
+    if (scaleFactor < 1) {
+      sizeW = sizeW * scaleFactor;
+      sizeH = sizeH * scaleFactor;
+    }
+
+    // 保持原图宽高比，自适应放入 sizeW x sizeH 框内，避免拉伸
+    const imgW = designImg.naturalWidth || designImg.width || 1;
+    const imgH = designImg.naturalHeight || designImg.height || 1;
+    const imgAspect = imgW / imgH;
+    let targetW = sizeW;
+    let targetH = sizeH;
+    if (targetW / targetH > imgAspect) {
+      targetH = sizeH;
+      targetW = targetH * imgAspect;
+    } else {
+      targetW = sizeW;
+      targetH = targetW / imgAspect;
+    }
+
+    const halfW = targetW / 2;
+    const halfH = targetH / 2;
     const clampedX = clamp(centerX, safeBox.left + halfW, safeBox.left + safeBox.w - halfW);
     const clampedY = clamp(centerY, safeBox.top + halfH, safeBox.top + safeBox.h - halfH);
 
@@ -596,14 +668,15 @@ const MockupLab: React.FC<Props> = ({ designUrl, isLoading = false, loadingText 
     ctx.translate(clampedX, clampedY);
     ctx.rotate(((designRotateMap[pos] ?? 0) * Math.PI) / 180);
     const crop = cropMap[pos] ?? { top: 0, right: 0, bottom: 0, left: 0 };
-    const cropX = -sizeW / 2 + crop.left * sizeW;
-    const cropY = -sizeH / 2 + crop.top * sizeH;
-    const cropW = sizeW * (1 - crop.left - crop.right);
-    const cropH = sizeH * (1 - crop.top - crop.bottom);
+    const cropX = -targetW / 2 + crop.left * targetW;
+    const cropY = -targetH / 2 + crop.top * targetH;
+    const cropW = targetW * (1 - crop.left - crop.right);
+    const cropH = targetH * (1 - crop.top - crop.bottom);
     ctx.beginPath();
     ctx.rect(cropX, cropY, cropW, cropH);
     ctx.clip();
-    ctx.drawImage(designImg, -sizeW / 2, -sizeH / 2, sizeW, sizeH);
+    // drawImage 仍按 targetW/targetH 绘制，保持比例
+    ctx.drawImage(designImg, -targetW / 2, -targetH / 2, targetW, targetH);
     ctx.restore();
 
     return canvas.toDataURL('image/png');
@@ -636,7 +709,7 @@ const MockupLab: React.FC<Props> = ({ designUrl, isLoading = false, loadingText 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8F9FA]">
       <input
-        ref={(el) => (fileInputRef.current = el)}
+        ref={(el) => { fileInputRef.current = el; }}
         type="file"
         accept="image/*"
         onChange={handleFileChange}
@@ -667,7 +740,7 @@ const MockupLab: React.FC<Props> = ({ designUrl, isLoading = false, loadingText 
                 onPointerLeave={endDrag}
               >
                 <img
-                  src={POSITION_IMAGES[positionType]}
+                  src={positionImages[positionType]}
                   alt="底衫模板"
                   className="absolute inset-0 w-full h-full object-cover"
                 />
@@ -849,6 +922,30 @@ const MockupLab: React.FC<Props> = ({ designUrl, isLoading = false, loadingText 
                     title="角点等比例放缩"
                   >
                     放缩
+                  </button>
+                </div>
+                {/* 性别切换按钮：放在裁剪按钮右侧 */}
+                <div className="absolute right-16 top-1/2 -translate-y-1/2 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // 通知 Checkout 组件的 gender 通过 persisted state: save to designMap? 简单方案：触发自定义事件
+                      window.dispatchEvent(new CustomEvent('trie:gender-change', { detail: { gender: 'male' } }));
+                    }}
+                    className={`px-3 py-2 rounded-lg border text-xs font-medium bg-white ${/* default male style */ 'border-black/10 text-zinc-600'}`}
+                    title="男款安全区"
+                  >
+                    男
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('trie:gender-change', { detail: { gender: 'female' } }));
+                    }}
+                    className={`px-3 py-2 rounded-lg border text-xs font-medium bg-white ${'border-black/10 text-zinc-600'}`}
+                    title="女款安全区"
+                  >
+                    女
                   </button>
                 </div>
                 {/* 已移除：应用裁剪按钮（按需删除残留调用以避免未定义错误） */}
